@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   description: "The #1 portal for memes download in India. Get thousands of copyright-free meme videos, viral GIFs, and editable meme templates for YouTube, Instagram, and WhatsApp. No login required!",
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{
