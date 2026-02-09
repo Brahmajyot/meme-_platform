@@ -255,21 +255,15 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const likeMeme = async (id: string) => {
-        if (!session) {
+        if (!session?.user?.email) {
             toast.error("Please sign in to like memes!");
             router.push('/login');
             return;
         }
 
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        // Guard: If NextAuth session exists but no Supabase user, continue anyway
-        // In production, you'd want to sync these or handle edge cases better
-        if (!user) {
-            toast.warning("Authentication sync issue. Please try again.");
-            return;
-        }
+        // Use NextAuth email as user_id since we're not using Supabase auth
+        const userEmail = session.user.email;
 
         const meme = memes.find(m => m.id === id);
         const isLiked = meme?.isLiked;
@@ -287,13 +281,12 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
         }));
 
         if (isLiked) {
-            await supabase.from('likes').delete().match({ user_id: user.id, meme_id: id });
+            await supabase.from('likes').delete().match({ user_id: userEmail, meme_id: id });
         } else {
-            await supabase.from('likes').insert({ user_id: user.id, meme_id: id });
+            await supabase.from('likes').insert({ user_id: userEmail, meme_id: id });
 
             // Create notification for the creator 
-            // Logic typically handled by database triggers, but we can do it client side for prototype
-            if (meme?.creator.id && meme.creator.id !== user.id && !meme.creator.id.startsWith("mock")) {
+            if (meme?.creator.id && meme.creator.id !== userEmail && !meme.creator.id.startsWith("mock")) {
                 await supabase.from('notifications').insert({
                     user_id: meme.creator.id,
                     type: 'like',
@@ -318,27 +311,22 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const subscribeToUser = async (targetUserId: string) => {
-        if (!session) {
+        if (!session?.user?.email) {
             toast.error("Sign in to subscribe!");
             router.push('/login');
             return;
         }
 
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const userEmail = session.user.email;
 
-        if (!user) {
-            toast.warning("Authentication sync issue. Please try again.");
-            return;
-        }
-
-        if (user.id === targetUserId) {
+        if (userEmail === targetUserId) {
             toast.warning("You can't subscribe to yourself!");
             return;
         }
 
         const { error } = await supabase.from('subscriptions').insert({
-            subscriber_id: user.id,
+            subscriber_id: userEmail,
             publisher_id: targetUserId
         });
 
