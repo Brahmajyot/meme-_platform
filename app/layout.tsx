@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -27,7 +28,9 @@ export default function RootLayout({
           <div className="flex min-h-screen">
             <Sidebar />
             <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative pb-16 lg:pb-0">
-              <Topbar />
+              <Suspense fallback={<div className="h-16 bg-zinc-950" />}>
+                <Topbar />
+              </Suspense>
               <main className="flex-1 pt-16">
                 {children}
               </main>
