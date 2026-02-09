@@ -1,13 +1,16 @@
+"use client";
+
 import { HeroSection } from "@/components/home/HeroSection";
 import { MemeGrid } from "@/components/meme/MemeGrid";
 import { AdUnit } from "@/components/ads/AdUnit";
-
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { MemeCard } from "@/components/meme/MemeCard";
-import { MOCK_MEMES } from "@/lib/mockData";
 import { SEOContent } from "@/components/home/SEOContent";
+import { useMemes } from "@/components/providers/MemeProvider";
 
 export default function Home() {
+  const { memes, loadMoreMemes, hasMore, isLoadingMore } = useMemes();
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Hero */}
@@ -29,14 +32,31 @@ export default function Home() {
       {/* Discover More */}
       <section className="py-20 container mx-auto px-4">
         <h2 className="text-2xl font-bold mb-12">Latest Drops</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {MOCK_MEMES.slice(0, 4).map((meme, idx) => (
-            <MemeCard key={meme.id} index={idx} {...meme} />
-          ))}
-        </div>
-        <div className="mt-12 text-center">
-          <AnimatedButton variant="secondary" className="px-8">Load More</AnimatedButton>
-        </div>
+        {memes.length === 0 ? (
+          <div className="text-center py-12 text-zinc-400">
+            <p>No memes yet. Be the first to upload!</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+              {memes.slice(0, 8).map((meme, idx) => (
+                <MemeCard key={meme.id} index={idx} {...meme} />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-12 text-center">
+                <AnimatedButton
+                  variant="secondary"
+                  className="px-8"
+                  onClick={loadMoreMemes}
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore ? "Loading..." : "Load More"}
+                </AnimatedButton>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* SEO Content */}

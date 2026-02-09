@@ -186,7 +186,17 @@ export function MemeCard({
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                // Share logic
+                                const shareUrl = `${window.location.origin}/meme/${id}`;
+                                if (navigator.share) {
+                                    navigator.share({
+                                        title: title,
+                                        text: `Check out this meme: ${title}`,
+                                        url: shareUrl
+                                    }).catch((err) => console.log('Share cancelled'));
+                                } else {
+                                    navigator.clipboard.writeText(shareUrl);
+                                    alert('Link copied to clipboard!');
+                                }
                             }}
                         >
                             <Share2 size={16} />
@@ -225,7 +235,7 @@ export function MemeCard({
 
                     {/* Styled Follow Button or Delete Button */}
                     {isCreator ? (
-                        <div className="flex-shrink-0 pt-1">
+                        <div className="flex-shrink-0 pt-1" onClick={(e) => e.preventDefault()}>
                             <button
                                 onClick={handleDelete}
                                 className="px-3 py-1 rounded-full border border-zinc-500/50 hover:bg-red-500/20 hover:border-red-500/50 text-zinc-400 hover:text-red-400 text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap flex items-center gap-1"
@@ -236,7 +246,7 @@ export function MemeCard({
                             </button>
                         </div>
                     ) : creator.id && (
-                        <div className="flex-shrink-0 pt-1">
+                        <div className="flex-shrink-0 pt-1" onClick={(e) => e.preventDefault()}>
                             <button
                                 onClick={handleSubscribe}
                                 className="px-3 py-1 rounded-full border border-red-500/50 hover:bg-red-500/10 text-red-500/90 hover:text-red-400 text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap shadow-[0_0_10px_rgba(239,68,68,0.1)]"

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { MOCK_MEMES } from "@/lib/mockData";
+// MOCK_MEMES removed - using only real Supabase data
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -52,6 +52,10 @@ interface MemeContextType {
     deleteMeme: (id: string) => void;
     subscribeToUser: (userId: string) => void;
     userId: string | null;
+    // Pagination
+    hasMore: boolean;
+    isLoadingMore: boolean;
+    loadMoreMemes: () => Promise<void>;
 }
 
 const MemeContext = createContext<MemeContextType | undefined>(undefined);
@@ -59,12 +63,18 @@ const MemeContext = createContext<MemeContextType | undefined>(undefined);
 export function MemeProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { data: session } = useSession();
-    // Initialize with mock data
-    const [memes, setMemes] = useState<Meme[]>(MOCK_MEMES);
+    // Initialize with empty array - load from Supabase
+    const [memes, setMemes] = useState<Meme[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const ITEMS_PER_PAGE = 20;
 
     // Use ref to track following list for realtime callbacks without closure staleness
     const followingRef = React.useRef<Set<string>>(new Set());
@@ -93,11 +103,12 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
 
-                // Fetch Memes
+                // Fetch Memes (first page only)
                 const { data, error } = await supabase
                     .from('memes')
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
+                    .range(0, ITEMS_PER_PAGE - 1);
 
                 if (error) throw error;
 
@@ -149,13 +160,13 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
                     likesCount: likeCounts[m.id] || 0
                 }));
 
-                // Deduplicate: only add MOCK_MEMES that don't already exist in mappedMemes
-                const existingIds = new Set(mappedMemes.map(m => m.id));
-                const uniqueMockMemes = MOCK_MEMES.filter(m => !existingIds.has(m.id));
-                setMemes([...mappedMemes, ...uniqueMockMemes]);
+                // Set memes with first page results
+                setMemes(mappedMemes);
+                // Check if there are more items to load
+                setHasMore(mappedMemes.length >= ITEMS_PER_PAGE);
             } catch (e) {
                 console.error("Failed to load memes from Supabase", e);
-                setMemes(MOCK_MEMES);
+                setMemes([]);
             } finally {
                 setIsLoaded(true);
             }
@@ -191,7 +202,11 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
                             isLiked: false,
                             likesCount: 0
                         };
-                        setMemes((prev) => [newMeme, ...prev]);
+                        // Only add if not already in state (prevent duplicates from realtime events)
+                        setMemes((prev) => {
+                            const exists = prev.some(meme => meme.id === newMeme.id);
+                            return exists ? prev : [newMeme, ...prev];
+                        });
 
                         // Notify only if subscribed
                         if (m.user_id && followingRef.current.has(m.user_id)) {
@@ -247,7 +262,89 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     }, [userId]);
 
     const addMeme = async (meme: Meme, file?: Blob) => {
-        setMemes((prev) => [meme, ...prev]);
+        setMemes((prev) => {
+            const exists = prev.some(m => m.id === meme.id);
+            return exists ? prev : [meme, ...prev];
+        });
+    };
+
+    const loadMoreMemes = async () => {
+        if (isLoadingMore || !hasMore) return;
+
+        setIsLoadingMore(true);
+        const supabase = createClient();
+        const nextPage = page + 1;
+        const start = nextPage * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE - 1;
+
+        try {
+            const { data, error } = await supabase
+                .from('memes')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .range(start, end);
+
+            if (error) throw error;
+
+            // Fetch user likes for new memes
+            let userLikes = new Set<string>();
+            if (userId) {
+                const { data: likesData } = await supabase
+                    .from('likes')
+                    .select('meme_id')
+                    .eq('user_id', userId);
+                likesData?.forEach((l: any) => userLikes.add(l.meme_id));
+            }
+
+            // Fetch likes count for new memes
+            const memeIds = (data || []).map((m: any) => m.id);
+            const { data: counts } = await supabase
+                .from('likes')
+                .select('meme_id')
+                .in('meme_id', memeIds);
+
+            const likeCounts: Record<string, number> = {};
+            counts?.forEach((l: any) => {
+                likeCounts[l.meme_id] = (likeCounts[l.meme_id] || 0) + 1;
+            });
+
+            // Map new memes
+            const newMemes: Meme[] = (data || []).map((m: any) => ({
+                id: m.id,
+                title: m.title,
+                category: m.category,
+                thumbnail: m.thumbnail,
+                videoUrl: m.video_url,
+                duration: m.duration,
+                creator: {
+                    name: m.creator_name || "Anonymous",
+                    avatar: m.creator_avatar || "https://i.pravatar.cc/150?u=anon",
+                    id: m.user_id || "mock_creator_id"
+                },
+                views: m.views || "0",
+                timePosted: new Date(m.created_at).toLocaleDateString(),
+                trendingScore: m.trending_score,
+                viralityScore: m.virality_score,
+                aiReasoning: m.ai_reasoning,
+                isLiked: userLikes.has(m.id),
+                likesCount: likeCounts[m.id] || 0
+            }));
+
+            // Add new memes with deduplication
+            setMemes((prev) => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const uniqueNewMemes = newMemes.filter(m => !existingIds.has(m.id));
+                return [...prev, ...uniqueNewMemes];
+            });
+
+            setPage(nextPage);
+            setHasMore(newMemes.length >= ITEMS_PER_PAGE);
+        } catch (error) {
+            console.error('Error loading more memes:', error);
+            toast.error('Failed to load more memes');
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     const markAsRead = async (id: string) => {
@@ -394,7 +491,12 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const incrementViews = (current: string) => {
+        // Handle undefined, null, or non-string values
+        if (!current || typeof current !== 'string') return "1";
+
+        // Don't increment if already formatted with M or K
         if (current.includes("M") || current.includes("K")) return current;
+
         const val = parseInt(current.replace(/,/g, ""));
         if (!isNaN(val)) return (val + 1).toString();
         return "1";
@@ -411,7 +513,10 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
             viewMeme,
             deleteMeme,
             subscribeToUser,
-            userId
+            userId,
+            hasMore,
+            isLoadingMore,
+            loadMoreMemes
         }}>
             {children}
         </MemeContext.Provider>
