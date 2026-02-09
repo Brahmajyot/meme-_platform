@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 
 import { motion } from "framer-motion";
-import { Play, Heart, Share2 } from "lucide-react";
+import { Play, Heart, Share2, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MemeCardProps {
@@ -18,6 +18,7 @@ interface MemeCardProps {
     timePosted: string;
     className?: string;
     index: number;
+    viralityScore?: number;
 }
 
 import Link from "next/link";
@@ -36,8 +37,9 @@ export function MemeCard({
     className,
     index,
     videoUrl,
-    isLiked // Receive isLiked prop
-}: MemeCardProps & { videoUrl?: string, isLiked?: boolean }) {
+    isLiked,
+    viralityScore
+}: MemeCardProps & { videoUrl?: string, isLiked?: boolean, viralityScore?: number }) {
     const { likeMeme, viewMeme } = useMemes(); // Get actions
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -130,6 +132,15 @@ export function MemeCard({
                     {duration && (
                         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur text-xs font-medium text-white z-20">
                             {duration}
+                        </div>
+                    )}
+
+
+                    {/* Virality Badge */}
+                    {viralityScore !== undefined && (
+                        <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-purple-500/80 backdrop-blur text-[10px] font-bold text-white z-20 flex items-center gap-1 border border-purple-400/30">
+                            <BrainCircuit size={10} />
+                            {viralityScore}
                         </div>
                     )}
 

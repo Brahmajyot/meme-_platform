@@ -19,6 +19,8 @@ export interface Meme {
     timePosted: string;
     trendingScore: number;
     isLiked?: boolean; // New property
+    viralityScore?: number;
+    aiReasoning?: string;
 }
 
 import { initDB, getMemesFromDB, saveMemeToDB, deleteMemeFromDB } from "@/lib/storage";

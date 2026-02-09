@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, Film, Image as ImageIcon, CheckCircle2, Play } from "lucide-react";
+import { Upload, X, Film, Image as ImageIcon, CheckCircle2, Play, Sparkles, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemes } from "@/components/providers/MemeProvider";
 import { useSession } from "next-auth/react";
@@ -20,6 +20,8 @@ export function FileUploader() {
     const [preview, setPreview] = useState<{ url: string; type: "video" | "image"; name: string } | null>(null);
     const [caption, setCaption] = useState("");
     const [isPosting, setIsPosting] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<{ score: number; reasoning: string } | null>(null);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -84,6 +86,80 @@ export function FileUploader() {
 
     // ... inside component
 
+
+    const convertBlobToBase64 = (blob: Blob): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || "");
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const handleGenerateCaption = async () => {
+        if (!preview || preview.type !== 'image') return;
+        setIsGenerating(true);
+        try {
+            const response = await fetch(preview.url);
+            const blob = await response.blob();
+            const base64 = await convertBlobToBase64(blob);
+
+            const res = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: "Generate a short, funny, viral caption for this meme image. Just the caption text, no quotes.",
+                    imageBase64: base64
+                })
+            });
+
+            const data = await res.json();
+            if (data.result) setCaption(data.result.trim());
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            console.error("AI Error:", error);
+            alert("Failed to generate caption: " + (error.message || "Unknown error"));
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleAnalyzeVirality = async () => {
+        if (!preview || preview.type !== 'image') return;
+        setIsGenerating(true);
+        try {
+            const response = await fetch(preview.url);
+            const blob = await response.blob();
+            const base64 = await convertBlobToBase64(blob);
+
+            const prompt = `Analyze this meme (Image + Caption: "${caption}"). 
+            1. Give a virality score from 0-100.
+            2. Explain why in 1 short sentence.
+            Return JSON format: { "score": number, "reasoning": "string" }`;
+
+            const res = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    imageBase64: base64
+                })
+            });
+
+            const data = await res.json();
+            // Basic parsing if the AI returns markdown code blocks
+            const cleanJson = data.result.replace(/```json|```/g, '').trim();
+            const analysis = JSON.parse(cleanJson);
+            setAiAnalysis(analysis);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            console.error("AI Analysis Error:", error);
+            alert("Failed to analyze: " + (error.message || "Unknown error"));
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handlePost = async () => {
         if (!preview || !caption) return;
         setIsPosting(true);
@@ -127,7 +203,9 @@ export function FileUploader() {
                 },
                 views: "0",
                 timePosted: "Just now",
-                trendingScore: 100,
+                trendingScore: aiAnalysis?.score || 50, // Use AI score if available, else default
+                viralityScore: aiAnalysis?.score,
+                aiReasoning: aiAnalysis?.reasoning,
                 // user_id: session?.user?.email // We could add this if we update Meme type
             };
 
@@ -211,7 +289,19 @@ export function FileUploader() {
                     {/* Details Form */}
                     <div className="bg-zinc-900/50 p-6 rounded-2xl border border-white/5 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-zinc-400 mb-2">Caption / Title</label>
+                            <label className="block text-sm font-medium text-zinc-400 mb-2 flex justify-between items-center">
+                                <span>Caption / Title</span>
+                                {preview.type === "image" && (
+                                    <button
+                                        onClick={handleGenerateCaption}
+                                        disabled={isGenerating}
+                                        className="text-xs flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50"
+                                    >
+                                        <Sparkles size={12} />
+                                        {isGenerating ? "Magic working..." : "Auto-Caption"}
+                                    </button>
+                                )}
+                            </label>
                             <input
                                 type="text"
                                 value={caption}
@@ -220,6 +310,36 @@ export function FileUploader() {
                                 placeholder="Give your meme a catchy title..."
                             />
                         </div>
+
+                        {preview.type === "image" && (
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleAnalyzeVirality}
+                                    disabled={isGenerating}
+                                    className="w-full py-3 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 text-sm font-medium transition-all flex items-center justify-center gap-2 group mb-2"
+                                >
+                                    <BrainCircuit size={16} className="group-hover:text-purple-400 transition-colors" />
+                                    {aiAnalysis ? "Re-Analyze Virality" : "Predict Virality Score"}
+                                </button>
+
+                                {aiAnalysis && (
+                                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mt-3">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+                                                <span className="font-bold text-purple-400">{aiAnalysis.score}</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-white">Virality Score</h4>
+                                                <p className="text-xs text-purple-300">AI Prediction</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-zinc-300 leading-relaxed">
+                                            {aiAnalysis.reasoning}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="flex justify-end pt-2">
                             <AnimatedButton
