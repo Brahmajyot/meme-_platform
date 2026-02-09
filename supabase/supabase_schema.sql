@@ -70,7 +70,7 @@ end $$;
 -- Likes Table
 create table if not exists public.likes (
     id uuid default gen_random_uuid() primary key,
-    user_id uuid references auth.users not null,
+    user_id text not null, -- Changed from uuid to text for NextAuth email
     meme_id uuid references public.memes not null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     unique(user_id, meme_id)
@@ -78,29 +78,41 @@ create table if not exists public.likes (
 
 alter table public.likes enable row level security;
 
+drop policy if exists "Everyone can view likes" on public.likes;
+drop policy if exists "Authenticated users can toggle likes" on public.likes;
+drop policy if exists "Anyone can toggle likes" on public.likes;
+drop policy if exists "Users can unlike" on public.likes;
+drop policy if exists "Anyone can unlike" on public.likes;
+
 create policy "Everyone can view likes" on public.likes for select using (true);
-create policy "Authenticated users can toggle likes" on public.likes for insert with check (auth.uid() = user_id);
-create policy "Users can unlike" on public.likes for delete using (auth.uid() = user_id);
+create policy "Anyone can toggle likes" on public.likes for insert with check (true);
+create policy "Anyone can unlike" on public.likes for delete using (true);
 
 -- Subscriptions Table
 create table if not exists public.subscriptions (
     id uuid default gen_random_uuid() primary key,
-    subscriber_id uuid references auth.users not null,
-    publisher_id uuid references auth.users not null, -- The user being subscribed to (creator)
+    subscriber_id text not null, -- Changed from uuid to text for NextAuth email
+    publisher_id text not null, -- Changed from uuid to text for NextAuth email
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     unique(subscriber_id, publisher_id)
 );
 
 alter table public.subscriptions enable row level security;
 
+drop policy if exists "Everyone can view subscriptions" on public.subscriptions;
+drop policy if exists "Authenticated users can subscribe" on public.subscriptions;
+drop policy if exists "Anyone can subscribe" on public.subscriptions;
+drop policy if exists "Users can unsubscribe" on public.subscriptions;
+drop policy if exists "Anyone can unsubscribe" on public.subscriptions;
+
 create policy "Everyone can view subscriptions" on public.subscriptions for select using (true);
-create policy "Authenticated users can subscribe" on public.subscriptions for insert with check (auth.uid() = subscriber_id);
-create policy "Users can unsubscribe" on public.subscriptions for delete using (auth.uid() = subscriber_id);
+create policy "Anyone can subscribe" on public.subscriptions for insert with check (true);
+create policy "Anyone can unsubscribe" on public.subscriptions for delete using (true);
 
 -- Notifications Table
 create table if not exists public.notifications (
     id uuid default gen_random_uuid() primary key,
-    user_id uuid references auth.users not null, -- Recipient
+    user_id text not null, -- Changed from uuid to text for NextAuth email
     type text not null, -- 'like', 'subscribe', 'upload'
     content text not null,
     related_id uuid, -- meme_id or user_id
@@ -112,10 +124,11 @@ create table if not exists public.notifications (
 
 alter table public.notifications enable row level security;
 
-create policy "Users can view their own notifications" on public.notifications for select using (auth.uid() = user_id);
--- Allow system/triggers to insert (or authenticated users triggering actions)
-create policy "Anyone can insert notifications" on public.notifications for insert with check (true); 
--- In a real app, you might restrict insert to triggers only, but for client-side prototype logic, this is fine.
+drop policy if exists "Users can view their own notifications" on public.notifications;
+drop policy if exists "Anyone can insert notifications" on public.notifications;
+
+create policy "Anyone can view notifications" on public.notifications for select using (true);
+create policy "Anyone can insert notifications" on public.notifications for insert with check (true);
 
 -- Add new tables to Realtime (Idempotent)
 do $$
