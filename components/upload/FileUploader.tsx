@@ -200,6 +200,7 @@ export function FileUploader() {
                     duration: preview.type === "video" ? "0:15" : null,
                     creator_name: session?.user?.name || "Anonymous Creator",
                     creator_avatar: session?.user?.image || "https://i.pravatar.cc/150?u=anon",
+                    user_id: session?.user?.email, // Add user_id for creator identification
                     views: "0",
                     trending_score: aiAnalysis?.score || 50,
                     virality_score: aiAnalysis?.score || null,
@@ -223,6 +224,7 @@ export function FileUploader() {
                 creator: {
                     name: insertedMeme.creator_name,
                     avatar: insertedMeme.creator_avatar,
+                    id: session?.user?.email, // Add creator ID for delete button
                 },
                 views: insertedMeme.views,
                 timePosted: "Just now",

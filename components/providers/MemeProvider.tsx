@@ -83,10 +83,14 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const supabase = createClient();
 
+
         const load = async () => {
             try {
+                // Note: We're using NextAuth, not Supabase auth
+                // Set userId from NextAuth session email
+                setUserId(session?.user?.email || null);
+
                 const { data: { user } } = await supabase.auth.getUser();
-                setUserId(user?.id || null);
 
                 if (user) {
                     // Fetch Notifications
@@ -259,7 +263,7 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [userId]);
+    }, [userId, session]);
 
     const addMeme = async (meme: Meme, file?: Blob) => {
         setMemes((prev) => {

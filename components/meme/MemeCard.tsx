@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Play, Heart, Share2, BrainCircuit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface MemeCardProps {
     id: string;
@@ -44,12 +45,13 @@ export function MemeCard({
     likesCount = 0,
     viralityScore
 }: MemeCardProps) {
-    const { likeMeme, viewMeme, subscribeToUser, deleteMeme } = useMemes();
+    const { likeMeme, viewMeme, subscribeToUser, deleteMeme, userId } = useMemes();
     const { data: session } = useSession();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [hasViewed, setHasViewed] = useState(false);
     const [isVideoError, setIsVideoError] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     const handleMouseEnter = () => {
         if (videoRef.current && videoUrl && !isVideoError) {
@@ -91,13 +93,15 @@ export function MemeCard({
     const handleDelete = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm(`Delete "${title}"? This action cannot be undone.`)) {
-            deleteMeme(id);
-        }
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = () => {
+        deleteMeme(id);
     };
 
     // Check if current user is the creator
-    const isCreator = session?.user?.email === creator.id;
+    const isCreator = userId === creator.id;
 
 
     return (
@@ -257,6 +261,18 @@ export function MemeCard({
                     )}
                 </div>
             </Link>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Delete Meme?"
+                message={`Are you sure you want to delete "${title}"? This action cannot be undone and the meme will be permanently removed.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                isDangerous={true}
+            />
         </motion.div>
     );
 }
