@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 
 import { motion } from "framer-motion";
-import { Play, Heart, Share2, BrainCircuit } from "lucide-react";
+import { Play, Heart, Share2, BrainCircuit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MemeCardProps {
@@ -43,7 +44,8 @@ export function MemeCard({
     likesCount = 0,
     viralityScore
 }: MemeCardProps) {
-    const { likeMeme, viewMeme, subscribeToUser } = useMemes();
+    const { likeMeme, viewMeme, subscribeToUser, deleteMeme } = useMemes();
+    const { data: session } = useSession();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [hasViewed, setHasViewed] = useState(false);
@@ -85,6 +87,17 @@ export function MemeCard({
             console.warn("No creator ID found for subscription");
         }
     };
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm(`Delete "${title}"? This action cannot be undone.`)) {
+            deleteMeme(id);
+        }
+    };
+
+    // Check if current user is the creator
+    const isCreator = session?.user?.email === creator.id;
 
 
     return (
@@ -210,8 +223,19 @@ export function MemeCard({
                         </div>
                     </div>
 
-                    {/* Styled Follow Button */}
-                    {creator.id && (
+                    {/* Styled Follow Button or Delete Button */}
+                    {isCreator ? (
+                        <div className="flex-shrink-0 pt-1">
+                            <button
+                                onClick={handleDelete}
+                                className="px-3 py-1 rounded-full border border-zinc-500/50 hover:bg-red-500/20 hover:border-red-500/50 text-zinc-400 hover:text-red-400 text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap flex items-center gap-1"
+                                title="Delete meme"
+                            >
+                                <Trash2 size={12} />
+                                Delete
+                            </button>
+                        </div>
+                    ) : creator.id && (
                         <div className="flex-shrink-0 pt-1">
                             <button
                                 onClick={handleSubscribe}

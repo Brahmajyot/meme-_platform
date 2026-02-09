@@ -149,7 +149,10 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
                     likesCount: likeCounts[m.id] || 0
                 }));
 
-                setMemes([...mappedMemes, ...MOCK_MEMES]);
+                // Deduplicate: only add MOCK_MEMES that don't already exist in mappedMemes
+                const existingIds = new Set(mappedMemes.map(m => m.id));
+                const uniqueMockMemes = MOCK_MEMES.filter(m => !existingIds.has(m.id));
+                setMemes([...mappedMemes, ...uniqueMockMemes]);
             } catch (e) {
                 console.error("Failed to load memes from Supabase", e);
                 setMemes(MOCK_MEMES);
@@ -331,7 +334,21 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const deleteMeme = async (id: string) => {
+        const supabase = createClient();
+
+        // Optimistically remove from UI
         setMemes((prev) => prev.filter(m => m.id !== id));
+
+        // Delete from database
+        const { error } = await supabase.from('memes').delete().eq('id', id);
+
+        if (error) {
+            console.error('Error deleting meme:', error);
+            toast.error("Failed to delete meme");
+            // Revert if there's an error - would need to refetch
+        } else {
+            toast.success("Meme deleted successfully!");
+        }
     };
 
     const subscribeToUser = async (targetUserId: string) => {
