@@ -23,7 +23,7 @@ export interface Meme {
     aiReasoning?: string;
 }
 
-import { initDB, getMemesFromDB, saveMemeToDB, deleteMemeFromDB } from "@/lib/storage";
+import { createClient } from "@/lib/supabase/client";
 
 // ... existing imports
 
@@ -42,22 +42,45 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     const [memes, setMemes] = useState<Meme[]>(MOCK_MEMES);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Load from DB on mount
+    // Load from Supabase on mount
     useEffect(() => {
         const load = async () => {
             try {
-                const storedMemes = await getMemesFromDB();
-                // Merge stored memes with mock memes, avoiding duplicates if any mock IDs clash (unlikely given UUIDs usually)
-                // Actually, let's just prepend stored memes to mock memes
-                // But wait, if we delete a mock meme (which isn't in DB), it will reappear.
-                // For this prototype, let's say DB is source of truth for *user* memes. 
-                // We'll keep MOCK_MEMES as a base, and add DB memes.
-                // Ideally, we'd copy MOCK_MEMES to DB on first load? 
-                // Let's just append DB memes to the state.
-                const uniqueStored = storedMemes.filter(sm => !MOCK_MEMES.find(mm => mm.id === sm.id));
-                setMemes([...uniqueStored, ...MOCK_MEMES]);
+                const supabase = createClient();
+                const { data, error } = await supabase
+                    .from('memes')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Map snake_case to camelCase
+                const mappedMemes: Meme[] = (data || []).map((m: any) => ({
+                    id: m.id,
+                    title: m.title,
+                    category: m.category,
+                    thumbnail: m.thumbnail,
+                    videoUrl: m.video_url,
+                    duration: m.duration,
+                    creator: {
+                        name: m.creator_name || "Anonymous",
+                        avatar: m.creator_avatar || "https://i.pravatar.cc/150?u=anon"
+                    },
+                    views: m.views || "0",
+                    timePosted: new Date(m.created_at).toLocaleDateString(), // Simple format
+                    trendingScore: m.trending_score,
+                    viralityScore: m.virality_score,
+                    aiReasoning: m.ai_reasoning,
+                    isLiked: false
+                }));
+
+                // Combine with mock data if needed
+                // We'll put Supabase memes first, then mock memes
+                setMemes([...mappedMemes, ...MOCK_MEMES]);
             } catch (e) {
-                console.error("Failed to load memes", e);
+                console.error("Failed to load memes from Supabase", e);
+                // Fallback to mock
+                setMemes(MOCK_MEMES);
             } finally {
                 setIsLoaded(true);
             }
@@ -69,18 +92,15 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
         // Optimistic update
         setMemes((prev) => [meme, ...prev]);
 
-        // Save to DB
-        try {
-            await saveMemeToDB(meme, file);
-        } catch (e) {
-            console.error("Failed to save meme", e);
-        }
+        // We don't need to save to DB here because FileUploader handles the insert now.
+        // OR we can handle it here. The previous pattern had saveMemeToDB here.
+        // Let's keep it clean: FileUploader inserts, then calls addMeme to update state.
+        // So this function just updates local state.
     };
 
     const likeMeme = (id: string) => {
         setMemes((prev) => prev.map(meme => {
             if (meme.id === id) {
-                // In a real app, we'd save this state to DB too
                 return { ...meme, isLiked: !meme.isLiked };
             }
             return meme;
@@ -90,8 +110,6 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     const viewMeme = (id: string) => {
         setMemes((prev) => prev.map(meme => {
             if (meme.id === id) {
-                // Update interaction state
-                // In a real app, update DB
                 return { ...meme, views: incrementViews(meme.views) };
             }
             return meme;
@@ -101,18 +119,12 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     const deleteMeme = async (id: string) => {
         // Optimistic update
         setMemes((prev) => prev.filter(m => m.id !== id));
-
-        // Delete from DB
-        try {
-            await deleteMemeFromDB(id);
-        } catch (e) {
-            console.error("Failed to delete meme", e);
-        }
+        // DB delete logic specific to Supabase would go here
     };
 
     // Helper to mock view increment
     const incrementViews = (current: string) => {
-        if (current.includes("M") || current.includes("K")) return current; // Complex parsing skipped for mock
+        if (current.includes("M") || current.includes("K")) return current;
         const val = parseInt(current.replace(/,/g, ""));
         if (!isNaN(val)) return (val + 1).toString();
         return "1";

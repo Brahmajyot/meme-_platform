@@ -167,10 +167,7 @@ export function FileUploader() {
         try {
             const supabase = createClient();
 
-            // 1. Get the blob from the preview URL (since we essentially have a blob url stored in preview)
-            // Or better, we should have kept the 'File' object.
-            // But we only stored 'preview' state.
-            // We can fetch the blob from the blob URL.
+            // 1. Get the blob from the preview URL
             const response = await fetch(preview.url);
             const blob = await response.blob();
 
@@ -183,40 +180,66 @@ export function FileUploader() {
                 .from('meme-media')
                 .upload(filePath, blob);
 
-            if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
+            if (uploadError) {
+                throw new Error(`Storage upload failed: ${uploadError.message}`);
+            }
 
             // 3. Get Public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('meme-media')
                 .getPublicUrl(filePath);
 
+            // 4. Insert into Supabase DB
+            const { data: insertedMeme, error: dbError } = await supabase
+                .from('memes')
+                .insert({
+                    title: caption,
+                    category: preview.type === "video" ? "Video" : "Image",
+                    thumbnail: publicUrl,
+                    video_url: preview.type === "video" ? publicUrl : null,
+                    duration: preview.type === "video" ? "0:15" : null,
+                    creator_name: session?.user?.name || "Anonymous Creator",
+                    creator_avatar: session?.user?.image || "https://i.pravatar.cc/150?u=anon",
+                    views: "0",
+                    trending_score: aiAnalysis?.score || 50,
+                    virality_score: aiAnalysis?.score || null,
+                    ai_reasoning: aiAnalysis?.reasoning || null,
+                })
+                .select()
+                .single();
+
+            if (dbError) {
+                throw new Error(`Database insert failed: ${dbError.message}`);
+            }
+
+            // 5. Update Local State & Redirect
             const newMeme = {
-                id: crypto.randomUUID(), // Let's generate a UUID
-                title: caption,
-                category: preview.type === "video" ? "Video" : "Image",
-                thumbnail: publicUrl, // For video, theoretically we need a separate thumb, but browser can often play/render the video url as thumb or we rely on autoplay.
-                videoUrl: preview.type === "video" ? publicUrl : undefined,
-                duration: preview.type === "video" ? "0:15" : undefined,
+                id: insertedMeme.id,
+                title: insertedMeme.title,
+                category: insertedMeme.category,
+                thumbnail: insertedMeme.thumbnail,
+                videoUrl: insertedMeme.video_url,
+                duration: insertedMeme.duration,
                 creator: {
-                    name: session?.user?.name || "Anonymous Creator",
-                    avatar: session?.user?.image || "https://i.pravatar.cc/150?u=anon",
+                    name: insertedMeme.creator_name,
+                    avatar: insertedMeme.creator_avatar,
                 },
-                views: "0",
+                views: insertedMeme.views,
                 timePosted: "Just now",
-                trendingScore: aiAnalysis?.score || 50, // Use AI score if available, else default
-                viralityScore: aiAnalysis?.score,
-                aiReasoning: aiAnalysis?.reasoning,
-                // user_id: session?.user?.email // We could add this if we update Meme type
+                trendingScore: insertedMeme.trending_score,
+                viralityScore: insertedMeme.virality_score,
+                aiReasoning: insertedMeme.ai_reasoning,
+                isLiked: false
             };
 
             await addMeme(newMeme as any);
             setIsPosting(false);
             router.push("/");
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Upload failed:", error);
             setIsPosting(false);
-            alert("Failed to upload. Ensure Supabase 'meme-media' bucket exists and policies are set.");
+            alert(`Failed to upload: ${error.message || "Unknown error"}`);
         }
     };
 

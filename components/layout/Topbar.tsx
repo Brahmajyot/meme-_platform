@@ -56,7 +56,7 @@ export function Topbar() {
             <div className="flex items-center gap-3 ml-4">
                 <Link
                     href="/ai-studio"
-                    className="p-2 text-zinc-400 hover:text-white transition-colors relative hidden sm:flex items-center gap-2 rounded-full hover:bg-white/5"
+                    className="p-2 text-zinc-400 hover:text-white transition-colors relative flex items-center gap-2 rounded-full hover:bg-white/5"
                     aria-label="Upload"
                 >
                     <Upload size={20} />

@@ -89,7 +89,7 @@ export function Sidebar() {
                     <div className="bg-zinc-900/50 rounded-xl p-2 border border-white/5">
                         <div className="space-y-1">
                             {HOME_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
                             ))}
                         </div>
                     </div>
@@ -99,7 +99,7 @@ export function Sidebar() {
                         <h3 className="text-lg font-bold text-white mb-2 px-2">You</h3>
                         <div className="space-y-1">
                             {YOU_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
                             ))}
                         </div>
                     </div>
@@ -109,7 +109,7 @@ export function Sidebar() {
                         <h3 className="text-lg font-bold text-white mb-2 px-2">Explore</h3>
                         <div className="space-y-1">
                             {EXPLORE_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
                             ))}
                         </div>
                     </div>
@@ -129,11 +129,12 @@ export function Sidebar() {
     );
 }
 
-function NavItem({ item, isActive }: { item: { icon: React.ElementType; label: string; href: string }, isActive: boolean }) {
+function NavItem({ item, isActive, onClick }: { item: { icon: React.ElementType; label: string; href: string }, isActive: boolean, onClick?: () => void }) {
     const Icon = item.icon;
     return (
         <Link
             href={item.href}
+            onClick={onClick}
             className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
                 isActive
