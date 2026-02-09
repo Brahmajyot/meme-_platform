@@ -9,7 +9,7 @@ interface MemeCardProps {
     id: string;
     title: string;
     thumbnail: string;
-    duration: string;
+    duration?: string;
     creator: {
         name: string;
         avatar: string;
