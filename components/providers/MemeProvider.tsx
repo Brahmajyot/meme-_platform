@@ -44,9 +44,10 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
 
     // Load from Supabase on mount
     useEffect(() => {
+        const supabase = createClient();
         const load = async () => {
             try {
-                const supabase = createClient();
+                // Client moved out
                 const { data, error } = await supabase
                     .from('memes')
                     .select('*')
@@ -86,6 +87,42 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
             }
         };
         load();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('memes-realtime')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'memes' },
+                (payload) => {
+                    const m = payload.new as any;
+                    const newMeme: Meme = {
+                        id: m.id,
+                        title: m.title,
+                        category: m.category,
+                        thumbnail: m.thumbnail,
+                        videoUrl: m.video_url,
+                        duration: m.duration,
+                        creator: {
+                            name: m.creator_name || "Anonymous",
+                            avatar: m.creator_avatar || "https://i.pravatar.cc/150?u=anon"
+                        },
+                        views: m.views || "0",
+                        timePosted: "Just now",
+                        trendingScore: m.trending_score,
+                        viralityScore: m.virality_score,
+                        aiReasoning: m.ai_reasoning,
+                        isLiked: false
+                    };
+
+                    setMemes((prev) => [newMeme, ...prev]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const addMeme = async (meme: Meme, file?: Blob) => {
