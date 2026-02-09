@@ -251,7 +251,7 @@ export function FileUploader() {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Upload Media</h3>
                     <p className="text-zinc-500 text-center max-w-sm mb-6">
-                        Drag & drop your funny videos or memes here, or click to browse.
+                        Drag & drop your funny videos or memes here, or <span className="text-red-400">tap to browse</span>.
                     </p>
                     <div className="flex gap-4">
                         <span className="px-3 py-1 bg-zinc-800 rounded text-xs text-zinc-400 flex items-center gap-2">

@@ -26,17 +26,30 @@ export function Topbar() {
                 isScrolled ? "bg-zinc-950/95 backdrop-blur-md border-b border-white/5" : "bg-zinc-950"
             )}
         >
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center mr-4">
+                <h1 className="text-xl font-black tracking-widest text-red-600 pl-12" style={{ fontFamily: 'Impact, sans-serif' }}>
+                    M.E.M.E.S
+                </h1>
+            </div>
+
             {/* Search Bar */}
-            <div className="flex-1 max-w-xl">
+            <div className="flex-1 max-w-xl hidden sm:block lg:block">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-red-400 transition-colors" size={18} />
                     <input
                         suppressHydrationWarning
                         type="text"
-                        placeholder="Search memes, templates, or creators..."
+                        placeholder="Search..."
                         className="w-full bg-zinc-900/50 border border-white/5 rounded-full pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-500/50 focus:bg-zinc-900 transition-all"
                     />
                 </div>
+            </div>
+            {/* Mobile Search Icon (optional, if we hide the full bar) */}
+            <div className="sm:hidden flex-1 flex justify-end pr-2">
+                <button className="p-2 text-zinc-400 hover:text-white">
+                    <Search size={20} />
+                </button>
             </div>
 
             {/* Actions */}

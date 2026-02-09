@@ -116,12 +116,13 @@ export function MemeCard({
                     />
 
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity z-20 pointer-events-none" />
+                    {/* Gradient Overlay - Always visible on mobile for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 lg:opacity-60 lg:group-hover:opacity-40 transition-opacity z-20 pointer-events-none" />
 
                     {/* Play Button Overlay */}
                     <div className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all duration-300 scale-90 z-30 pointer-events-none",
-                        isPlaying ? "opacity-0 scale-100" : "opacity-0 group-hover:opacity-100 group-hover:scale-100"
+                        isPlaying ? "opacity-0 scale-100" : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 group-hover:scale-100"
                     )}>
                         <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
                             <Play className="fill-white text-white ml-1" size={20} />
@@ -145,7 +146,8 @@ export function MemeCard({
                     )}
 
                     {/* Hover Actions */}
-                    <div className="absolute top-2 right-2 flex flex-col gap-2 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 delay-75 z-30 pointer-events-auto">
+                    {/* Hover Actions - Always visible on touch/mobile, hover on desktop */}
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 translate-x-0 opacity-100 lg:translate-x-10 lg:opacity-0 lg:group-hover:translate-x-0 lg:group-hover:opacity-100 transition-all duration-300 delay-75 z-30 pointer-events-auto">
                         <button
                             onClick={handleLike}
                             className={cn(
