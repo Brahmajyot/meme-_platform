@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Sparkles, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export const dynamic = 'force-dynamic';
+
 export default function AIStudioPage() {
     const [activeTab, setActiveTab] = useState<"ai" | "upload">("ai");
 
