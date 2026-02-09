@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-background: rgb(10 10 10);
+  /* #0A0A0A */
+  --color-foreground: rgb(244 244 245);
+
+  --color-card: rgb(24 24 27);
+  --color-card-foreground: rgb(244 244 245);
+
+  --color-popover: rgb(24 24 27);
+  --color-popover-foreground: rgb(244 244 245);
+
+  --color-primary: rgb(244 244 245);
+  --color-primary-foreground: rgb(24 24 27);
+
+  --color-secondary: rgb(39 39 42);
+  --color-secondary-foreground: rgb(244 244 245);
+
+  --color-muted: rgb(39 39 42);
+  --color-muted-foreground: rgb(161 161 170);
+
+  --color-accent: rgb(39 39 42);
+  --color-accent-foreground: rgb(244 244 245);
+
+  --color-destructive: rgb(239 68 68);
+  --color-destructive-foreground: rgb(244 244 245);
+
+  --color-border: rgb(39 39 42);
+  --color-input: rgb(39 39 42);
+  --color-ring: rgb(244 244 245);
+
+  --radius: 0.75rem;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@utility text-glow {
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.4);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@utility glass-panel {
+  @apply bg-zinc-900/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+
+  /* Firefox */
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility mask-gradient-right {
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+}
+
+/* Base styles need to use standard CSS if @layer base isn't supported the same way in v4 with @import "tailwindcss" */
+/* actually @layer base works fine */
+
+@layer base {
+  :root {
+    --background: 10 10 10;
+    --foreground: 244 244 245;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-red-500/20 selection:text-red-200;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  * {
+    @apply border-border;
+  }
 }
