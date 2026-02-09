@@ -280,20 +280,44 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
             return m;
         }));
 
-        if (isLiked) {
-            await supabase.from('likes').delete().match({ user_id: userEmail, meme_id: id });
-        } else {
-            await supabase.from('likes').insert({ user_id: userEmail, meme_id: id });
+        try {
+            if (isLiked) {
+                // Unlike
+                const { error } = await supabase.from('likes').delete().match({ user_id: userEmail, meme_id: id });
+                if (error) throw error;
+            } else {
+                // Like
+                const { error } = await supabase.from('likes').insert({ user_id: userEmail, meme_id: id });
 
-            // Create notification for the creator 
-            if (meme?.creator.id && meme.creator.id !== userEmail && !meme.creator.id.startsWith("mock")) {
-                await supabase.from('notifications').insert({
-                    user_id: meme.creator.id,
-                    type: 'like',
-                    content: `Someone liked your meme: ${meme.title}`,
-                    is_read: false
-                });
+                // If conflict (409), the like already exists - try to delete it instead
+                if (error?.code === '23505') {
+                    await supabase.from('likes').delete().match({ user_id: userEmail, meme_id: id });
+                } else if (error) {
+                    throw error;
+                } else {
+                    // Create notification for the creator 
+                    if (meme?.creator.id && meme.creator.id !== userEmail && !meme.creator.id.startsWith("mock")) {
+                        await supabase.from('notifications').insert({
+                            user_id: meme.creator.id,
+                            type: 'like',
+                            content: `Someone liked your meme: ${meme.title}`,
+                            is_read: false
+                        });
+                    }
+                }
             }
+        } catch (err) {
+            console.error('Error toggling like:', err);
+            // Revert optimistic update
+            setMemes((prev) => prev.map(m => {
+                if (m.id === id) {
+                    return {
+                        ...m,
+                        isLiked: !m.isLiked,
+                    };
+                }
+                return m;
+            }));
         }
     };
 
