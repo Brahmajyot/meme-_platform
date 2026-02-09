@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { MOCK_MEMES } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -57,6 +58,7 @@ const MemeContext = createContext<MemeContextType | undefined>(undefined);
 
 export function MemeProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
+    const { data: session } = useSession();
     // Initialize with mock data
     const [memes, setMemes] = useState<Meme[]>(MOCK_MEMES);
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -253,12 +255,19 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const likeMeme = async (id: string) => {
+        if (!session) {
+            toast.error("Please sign in to like memes!");
+            router.push('/login');
+            return;
+        }
+
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
+        // Guard: If NextAuth session exists but no Supabase user, continue anyway
+        // In production, you'd want to sync these or handle edge cases better
         if (!user) {
-            toast.error("Please sign in to like memes!");
-            router.push('/login');
+            toast.warning("Authentication sync issue. Please try again.");
             return;
         }
 
@@ -309,12 +318,17 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const subscribeToUser = async (targetUserId: string) => {
+        if (!session) {
+            toast.error("Sign in to subscribe!");
+            router.push('/login');
+            return;
+        }
+
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            toast.error("Sign in to subscribe!");
-            router.push('/login');
+            toast.warning("Authentication sync issue. Please try again.");
             return;
         }
 
