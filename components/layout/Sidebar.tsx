@@ -7,22 +7,18 @@ import {
     Heart,
     Video,
     Sparkles,
-    Menu,
-    X,
+    Clapperboard,
+    Repeat,
     Smile,
     Film,
-    // Anchor was not found, using Link2 or similar if needed, but let's stick to standard ones
     Music,
     LayoutTemplate,
     Newspaper,
-    Zap,
-    Clapperboard,
-    Repeat
+    Zap
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
 
 const HOME_ITEMS = [
     { icon: Home, label: "Home", href: "/" },
@@ -47,34 +43,14 @@ const EXPLORE_ITEMS = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const [isOpen, setIsOpen] = useState(false);
-    const [isDesktop, setIsDesktop] = useState(false);
-
-    // Handle resize to reset state on desktop
-    useEffect(() => {
-        const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
-        checkDesktop();
-        window.addEventListener("resize", checkDesktop);
-        return () => window.removeEventListener("resize", checkDesktop);
-    }, []);
 
     return (
         <>
-            {/* Mobile Toggle */}
-            <button
-                className="lg:hidden fixed top-4 left-4 z-[60] p-2 bg-zinc-900/80 backdrop-blur-md rounded-lg border border-white/10 text-white shadow-lg"
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-
             {/* Sidebar Container */}
             <motion.aside
-                initial={false}
-                animate={{ x: isDesktop || isOpen ? 0 : "-100%" }}
+                animate={{ x: 0 }}
                 className={cn(
-                    "fixed top-0 left-0 h-screen w-64 bg-zinc-950/95 backdrop-blur-xl border-r border-white/5 z-40 pt-6 px-4 transition-transform duration-300 ease-in-out",
-                    "lg:translate-x-0 lg:w-64" // Reset for desktop
+                    "fixed top-0 left-0 h-screen w-64 bg-zinc-950/95 backdrop-blur-xl border-r border-white/5 z-40 pt-6 px-4 hidden lg:block",
                 )}
             >
                 {/* Logo */}
@@ -89,7 +65,7 @@ export function Sidebar() {
                     <div className="bg-zinc-900/50 rounded-xl p-2 border border-white/5">
                         <div className="space-y-1">
                             {HOME_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
                             ))}
                         </div>
                     </div>
@@ -99,7 +75,7 @@ export function Sidebar() {
                         <h3 className="text-lg font-bold text-white mb-2 px-2">You</h3>
                         <div className="space-y-1">
                             {YOU_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
                             ))}
                         </div>
                     </div>
@@ -109,7 +85,7 @@ export function Sidebar() {
                         <h3 className="text-lg font-bold text-white mb-2 px-2">Explore</h3>
                         <div className="space-y-1">
                             {EXPLORE_ITEMS.map((item) => (
-                                <NavItem key={item.href} item={item} isActive={pathname === item.href} onClick={() => setIsOpen(false)} />
+                                <NavItem key={item.href} item={item} isActive={pathname === item.href} />
                             ))}
                         </div>
                     </div>
@@ -118,13 +94,7 @@ export function Sidebar() {
                 {/* User Profile Snippet (Optional - keeping mostly hidden or minimal if needed, but user didn't explicitly ask to remove it, sticking to design which had simple nav) */}
             </motion.aside>
 
-            {/* Overlay for mobile */}
-            {isOpen && (
-                <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
+            {/* No Overlay needed since sidebar is desktop only */}
         </>
     );
 }

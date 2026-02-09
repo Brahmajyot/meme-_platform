@@ -13,21 +13,23 @@ interface MemeCardProps {
     creator: {
         name: string;
         avatar: string;
+        id?: string;
     };
     views: string;
     timePosted: string;
     className?: string;
     index: number;
+    videoUrl?: string;
+    isLiked?: boolean;
+    likesCount?: number;
     viralityScore?: number;
 }
 
 import Link from "next/link";
 import { useMemes } from "@/components/providers/MemeProvider";
 
-// ... existing imports
-
 export function MemeCard({
-    id, // Ensure ID is passed and used
+    id,
     title,
     thumbnail,
     duration,
@@ -38,9 +40,10 @@ export function MemeCard({
     index,
     videoUrl,
     isLiked,
+    likesCount = 0,
     viralityScore
-}: MemeCardProps & { videoUrl?: string, isLiked?: boolean, viralityScore?: number }) {
-    const { likeMeme, viewMeme } = useMemes(); // Get actions
+}: MemeCardProps) {
+    const { likeMeme, viewMeme, subscribeToUser } = useMemes();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [hasViewed, setHasViewed] = useState(false);
@@ -48,10 +51,10 @@ export function MemeCard({
 
     const handleMouseEnter = () => {
         if (videoRef.current && videoUrl && !isVideoError) {
+            // ... existing code
             videoRef.current.play().catch(e => console.log("Autoplay prevented:", e));
             setIsPlaying(true);
 
-            // Increment view on play (once per session/card load)
             if (!hasViewed) {
                 viewMeme(id);
                 setHasViewed(true);
@@ -68,10 +71,21 @@ export function MemeCard({
     };
 
     const handleLike = (e: React.MouseEvent) => {
-        e.preventDefault(); // Prevent Link navigation
+        e.preventDefault();
         e.stopPropagation();
         likeMeme(id);
     };
+
+    const handleSubscribe = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (creator.id) {
+            subscribeToUser(creator.id);
+        } else {
+            console.warn("No creator ID found for subscription");
+        }
+    };
+
 
     return (
         <motion.div
@@ -86,8 +100,7 @@ export function MemeCard({
                 {/* Thumbnail Container */}
                 <div className="relative aspect-[9/16] sm:aspect-video rounded-xl overflow-hidden mb-3 bg-black">
 
-                    {/* Video Player (if available) */}
-                    {/* Video Player (if available) */}
+                    {/* Video Player */}
                     {videoUrl && !isVideoError && (
                         <video
                             ref={videoRef}
@@ -116,7 +129,6 @@ export function MemeCard({
                     />
 
                     {/* Gradient Overlay */}
-                    {/* Gradient Overlay - Always visible on mobile for text readability */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 lg:opacity-60 lg:group-hover:opacity-40 transition-opacity z-20 pointer-events-none" />
 
                     {/* Play Button Overlay */}
@@ -136,7 +148,6 @@ export function MemeCard({
                         </div>
                     )}
 
-
                     {/* Virality Badge */}
                     {viralityScore !== undefined && (
                         <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-purple-500/80 backdrop-blur text-[10px] font-bold text-white z-20 flex items-center gap-1 border border-purple-400/30">
@@ -146,23 +157,23 @@ export function MemeCard({
                     )}
 
                     {/* Hover Actions */}
-                    {/* Hover Actions - Always visible on touch/mobile, hover on desktop */}
                     <div className="absolute top-2 right-2 flex flex-col gap-2 translate-x-0 opacity-100 lg:translate-x-10 lg:opacity-0 lg:group-hover:translate-x-0 lg:group-hover:opacity-100 transition-all duration-300 delay-75 z-30 pointer-events-auto">
                         <button
                             onClick={handleLike}
                             className={cn(
-                                "p-2 rounded-full backdrop-blur transition-colors",
+                                "p-2 rounded-full backdrop-blur transition-all flex flex-col items-center gap-0.5",
                                 isLiked ? "bg-red-500 text-white" : "bg-black/40 text-white hover:bg-red-500 hover:text-white"
                             )}
                         >
                             <Heart size={16} className={cn(isLiked && "fill-current")} />
+                            <span className="text-[10px] font-bold">{Math.max(0, likesCount)}</span>
                         </button>
                         <button
                             className="p-2 rounded-full bg-black/40 backdrop-blur text-white hover:bg-white/20 transition-colors"
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                // Share logic here if needed
+                                // Share logic
                             }}
                         >
                             <Share2 size={16} />
@@ -171,19 +182,45 @@ export function MemeCard({
                 </div>
 
                 {/* Metadata */}
-                <div className="flex gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={creator.avatar} alt={creator.name} className="w-8 h-8 rounded-full border border-white/10" />
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-medium text-sm leading-tight line-clamp-2 group-hover:text-red-400 transition-colors">{title}</h3>
-                        <div className="mt-1 flex items-center text-xs text-zinc-500">
-                            <span>{creator.name}</span>
-                            <span className="mx-1.5">•</span>
-                            <span>{views} views</span>
-                            <span className="mx-1.5">•</span>
-                            <span>{timePosted}</span>
+                {/* Metadata */}
+                <div className="flex gap-4 items-start pt-2 px-1">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={creator.avatar}
+                            alt={creator.name}
+                            className="w-10 h-10 rounded-full border-2 border-zinc-900 ring-2 ring-white/10 object-cover"
+                        />
+                    </div>
+
+                    {/* Content Info */}
+                    <div className="flex-1 min-w-0 pr-2">
+                        <h3 className="text-white font-bold text-base leading-snug line-clamp-2 mb-1 group-hover:text-red-500 transition-colors">
+                            {title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-400">
+                            <span className="text-zinc-300 hover:text-white transition-colors">{creator.name}</span>
+                            <div className="flex items-center gap-1.5 opacity-60 text-[10px]">
+                                <span>•</span>
+                                <span>{views} views</span>
+                                <span>•</span>
+                                <span>{timePosted}</span>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Styled Follow Button */}
+                    {creator.id && (
+                        <div className="flex-shrink-0 pt-1">
+                            <button
+                                onClick={handleSubscribe}
+                                className="px-3 py-1 rounded-full border border-red-500/50 hover:bg-red-500/10 text-red-500/90 hover:text-red-400 text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                            >
+                                Follow
+                            </button>
+                        </div>
+                    )}
                 </div>
             </Link>
         </motion.div>

@@ -4,7 +4,9 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { Providers } from "@/components/providers/Providers";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -24,14 +26,16 @@ export default function RootLayout({
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative">
+            <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative pb-16 lg:pb-0">
               <Topbar />
               <main className="flex-1 pt-16">
                 {children}
               </main>
+              <MobileNav />
             </div>
           </div>
         </Providers>
+        <Toaster position="top-center" richColors />
         <SpeedInsights />
       </body>
     </html>
