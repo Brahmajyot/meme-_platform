@@ -16,6 +16,14 @@ export const metadata: Metadata = {
   description: "The #1 portal for memes download in India. Get thousands of copyright-free meme videos, viral GIFs, and editable meme templates for YouTube, Instagram, and WhatsApp. No login required!",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
+
 export const dynamic = 'force-dynamic';
 
 export default function RootLayout({
@@ -25,11 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans bg-background text-foreground overflow-x-hidden`}>
+      <body className={`${inter.variable} font-sans bg-background text-foreground overflow-x-hidden max-w-[100vw]`}>
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative pb-16 lg:pb-0">
+            <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative pb-16 lg:pb-0 w-full max-w-full overflow-x-hidden">
               <Suspense fallback={<div className="h-16 bg-zinc-950" />}>
                 <Topbar />
               </Suspense>

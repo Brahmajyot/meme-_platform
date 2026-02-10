@@ -49,7 +49,7 @@ export function Topbar() {
     return (
         <header
             className={cn(
-                "fixed top-0 right-0 left-0 lg:left-64 z-30 h-16 px-4 flex items-center justify-between transition-all duration-300",
+                "fixed top-0 right-0 left-0 lg:left-64 z-30 h-16 px-4 flex items-center justify-between transition-all duration-300 w-full max-w-full",
                 isScrolled ? "bg-zinc-950/95 backdrop-blur-md border-b border-white/5" : "bg-zinc-950"
             )}
         >
@@ -73,7 +73,7 @@ export function Topbar() {
             <form
                 onSubmit={handleSearch}
                 className={cn(
-                    "flex-1 max-w-xl mx-4 transition-all duration-200",
+                    "flex-1 max-w-xl mx-4 transition-all duration-200 w-full",
                     "hidden sm:block lg:block", // Default desktop behavior
                     isSearchOpen && "flex block absolute inset-x-0 top-2 z-50 px-2 bg-zinc-950" // Mobile open state
                 )}
@@ -119,9 +119,9 @@ export function Topbar() {
                 <NotificationDropdown />
 
                 {session ? (
-                    <div className="items-center gap-3 pl-2 border-l border-white/10 hidden lg:flex">
-                        <span className="text-sm font-medium">{session.user?.name}</span>
-                        <button onClick={() => signOut()} className="p-1.5 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-colors" title="Sign Out">
+                    <div className="items-center gap-2 sm:gap-3 pl-2 border-l border-white/10 flex">
+                        <span className="text-xs sm:text-sm font-medium hidden sm:inline">{session.user?.name}</span>
+                        <button onClick={() => signOut()} className="p-1.5 hover:bg-red-500/20 hover:text-red-500 rounded-full transition-colors hidden sm:block" title="Sign Out">
                             <LogOut size={18} />
                         </button>
                         {session.user?.image ? (
@@ -134,7 +134,7 @@ export function Topbar() {
                     </div>
                 ) : (
                     <Link href="/login">
-                        <AnimatedButton variant="primary" className="py-1.5 px-4 text-sm hidden lg:flex">
+                        <AnimatedButton variant="primary" className="py-1.5 px-3 sm:px-4 text-xs sm:text-sm">
                             Sign In
                         </AnimatedButton>
                     </Link>

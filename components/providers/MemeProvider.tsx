@@ -51,6 +51,7 @@ interface MemeContextType {
     viewMeme: (id: string) => void;
     deleteMeme: (id: string) => void;
     subscribeToUser: (userId: string) => void;
+    isFollowing: (userId: string) => boolean;
     userId: string | null;
     // Pagination
     hasMore: boolean;
@@ -69,6 +70,7 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const [subscriptions, setSubscriptions] = useState<Set<string>>(new Set());
 
     // Pagination state
     const [page, setPage] = useState(0);
@@ -118,21 +120,24 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
 
                 // Fetch User's Likes
                 let userLikes = new Set<string>();
-                if (user) {
+                const userEmail = session?.user?.email;
+
+                if (userEmail) {
                     const { data: likesData } = await supabase
                         .from('likes')
                         .select('meme_id')
-                        .eq('user_id', user.id);
+                        .eq('user_id', userEmail);
                     likesData?.forEach((l: any) => userLikes.add(l.meme_id));
 
                     // Fetch User's Subscriptions
                     const { data: subsData } = await supabase
                         .from('subscriptions')
                         .select('publisher_id')
-                        .eq('subscriber_id', user.id);
+                        .eq('subscriber_id', userEmail);
                     const subs = new Set<string>();
                     subsData?.forEach((s: any) => subs.add(s.publisher_id));
                     followingRef.current = subs;
+                    setSubscriptions(subs);
                 }
 
                 // Fetch Total Likes per meme
@@ -467,29 +472,70 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const { error } = await supabase.from('subscriptions').insert({
-            subscriber_id: userEmail,
-            publisher_id: targetUserId
-        });
+        // Check if already following
+        const isCurrentlyFollowing = subscriptions.has(targetUserId);
 
-        if (error) {
-            if (error.code === '23505') {
-                toast.info("Already subscribed!", { description: "You are already following this creator." });
+        if (isCurrentlyFollowing) {
+            // Unfollow
+            // Optimistically update UI
+            setSubscriptions(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(targetUserId);
+                return newSet;
+            });
+            followingRef.current.delete(targetUserId);
+
+            const { error } = await supabase
+                .from('subscriptions')
+                .delete()
+                .match({ subscriber_id: userEmail, publisher_id: targetUserId });
+
+            if (error) {
+                console.error('Error unfollowing:', error);
+                toast.error("Failed to unfollow");
+                // Revert optimistic update
+                setSubscriptions(prev => new Set(prev).add(targetUserId));
+                followingRef.current.add(targetUserId);
             } else {
-                toast.error("Failed to subscribe");
+                toast.success("Unfollowed", { description: "You will no longer receive notifications from this creator." });
             }
         } else {
-            toast.success("Subscribed!", { description: "You will now get notifications from this creator." });
+            // Follow
+            // Optimistically update UI
+            setSubscriptions(prev => new Set(prev).add(targetUserId));
             followingRef.current.add(targetUserId);
 
-            // Notify the creator
-            if (!targetUserId.startsWith("mock")) {
-                await supabase.from('notifications').insert({
-                    user_id: targetUserId,
-                    type: 'follow',
-                    content: `New subscriber!`,
-                    is_read: false
-                });
+            const { error } = await supabase.from('subscriptions').insert({
+                subscriber_id: userEmail,
+                publisher_id: targetUserId
+            });
+
+            if (error) {
+                if (error.code === '23505') {
+                    toast.info("Already subscribed!", { description: "You are already following this creator." });
+                } else {
+                    console.error('Error following:', error);
+                    toast.error("Failed to subscribe");
+                    // Revert optimistic update
+                    setSubscriptions(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(targetUserId);
+                        return newSet;
+                    });
+                    followingRef.current.delete(targetUserId);
+                }
+            } else {
+                toast.success("Subscribed!", { description: "You will now get notifications from this creator." });
+
+                // Notify the creator
+                if (!targetUserId.startsWith("mock")) {
+                    await supabase.from('notifications').insert({
+                        user_id: targetUserId,
+                        type: 'follow',
+                        content: `New subscriber!`,
+                        is_read: false
+                    });
+                }
             }
         }
     };
@@ -506,6 +552,10 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
         return "1";
     };
 
+    const isFollowing = (userId: string) => {
+        return subscriptions.has(userId);
+    };
+
     return (
         <MemeContext.Provider value={{
             memes,
@@ -517,6 +567,7 @@ export function MemeProvider({ children }: { children: React.ReactNode }) {
             viewMeme,
             deleteMeme,
             subscribeToUser,
+            isFollowing,
             userId,
             hasMore,
             isLoadingMore,

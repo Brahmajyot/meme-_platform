@@ -97,7 +97,7 @@ export function MemeView({ id }: MemeViewProps) {
                 <div className="lg:col-span-2 space-y-6">
 
                     {/* Player / Image Viewer */}
-                    <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl group">
+                    <div className="relative aspect-[4/5] sm:aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl group">
                         {meme.videoUrl && !isVideoError ? (
                             <>
                                 <video

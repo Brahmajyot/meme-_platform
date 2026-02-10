@@ -1,4 +1,4 @@
-# 🎬 MemeStream AI Platform
+          # 🎬 MemeStream AI Platform
 
 A modern, AI-powered meme sharing platform built with Next.js, Supabase, and Google AI. Upload, share, and discover viral memes with built-in AI analysis and virality scoring.
 

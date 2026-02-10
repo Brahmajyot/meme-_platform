@@ -29,7 +29,7 @@ export function MemeGrid() {
                     <p className="text-zinc-600 text-sm mt-2">Try switching categories or upload one!</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-8 pb-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 sm:gap-x-4 sm:gap-y-8 pb-20">
                     {filteredMemes.map((meme, idx) => (
                         <MemeCard key={meme.id} index={idx} {...meme} />
                     ))}

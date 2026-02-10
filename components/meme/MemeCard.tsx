@@ -45,7 +45,7 @@ export function MemeCard({
     likesCount = 0,
     viralityScore
 }: MemeCardProps) {
-    const { likeMeme, viewMeme, subscribeToUser, deleteMeme, userId } = useMemes();
+    const { likeMeme, viewMeme, subscribeToUser, deleteMeme, userId, isFollowing } = useMemes();
     const { data: session } = useSession();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -103,6 +103,9 @@ export function MemeCard({
     // Check if current user is the creator
     const isCreator = userId === creator.id;
 
+    // Check if user is following this creator
+    const isFollowingCreator = creator.id ? isFollowing(creator.id) : false;
+
 
     return (
         <motion.div
@@ -115,7 +118,7 @@ export function MemeCard({
         >
             <Link href={`/meme/${id}`} className="block">
                 {/* Thumbnail Container */}
-                <div className="relative aspect-[9/16] sm:aspect-video rounded-xl overflow-hidden mb-3 bg-black">
+                <div className="relative aspect-[4/5] sm:aspect-video rounded-xl overflow-hidden mb-2 sm:mb-3 bg-black">
 
                     {/* Video Player */}
                     {videoUrl && !isVideoError && (
@@ -178,15 +181,15 @@ export function MemeCard({
                         <button
                             onClick={handleLike}
                             className={cn(
-                                "p-2 rounded-full backdrop-blur transition-all flex flex-col items-center gap-0.5",
+                                "p-2.5 sm:p-2 rounded-full backdrop-blur transition-all flex flex-col items-center gap-0.5",
                                 isLiked ? "bg-red-500 text-white" : "bg-black/40 text-white hover:bg-red-500 hover:text-white"
                             )}
                         >
-                            <Heart size={16} className={cn(isLiked && "fill-current")} />
+                            <Heart size={18} className={cn("sm:w-4 sm:h-4", isLiked && "fill-current")} />
                             <span className="text-[10px] font-bold">{Math.max(0, likesCount)}</span>
                         </button>
                         <button
-                            className="p-2 rounded-full bg-black/40 backdrop-blur text-white hover:bg-white/20 transition-colors"
+                            className="p-2.5 sm:p-2 rounded-full bg-black/40 backdrop-blur text-white hover:bg-white/20 transition-colors"
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -203,7 +206,7 @@ export function MemeCard({
                                 }
                             }}
                         >
-                            <Share2 size={16} />
+                            <Share2 size={18} className="sm:w-4 sm:h-4" />
                         </button>
                     </div>
                 </div>
@@ -253,9 +256,14 @@ export function MemeCard({
                         <div className="flex-shrink-0 pt-1" onClick={(e) => e.preventDefault()}>
                             <button
                                 onClick={handleSubscribe}
-                                className="px-3 py-1 rounded-full border border-red-500/50 hover:bg-red-500/10 text-red-500/90 hover:text-red-400 text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                                className={cn(
+                                    "px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 whitespace-nowrap",
+                                    isFollowingCreator
+                                        ? "border-zinc-700 bg-black text-zinc-400 hover:bg-zinc-900"
+                                        : "border-blue-500/50 hover:bg-blue-500/10 text-blue-500/90 hover:text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                                )}
                             >
-                                Follow
+                                {isFollowingCreator ? "Following" : "Follow"}
                             </button>
                         </div>
                     )}

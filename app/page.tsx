@@ -17,8 +17,8 @@ export default function Home() {
       <HeroSection />
 
       {/* Trending Section */}
-      <section className="py-6 container mx-auto px-4">
-        <h2 className="text-2xl font-bold mb-6">Trending Now</h2>
+      <section className="py-4 sm:py-6 container mx-auto px-4">
+        <h2 className="text-2xl font-bold mb-4 sm:mb-6">Trending Now</h2>
         <MemeGrid />
       </section>
 
@@ -30,15 +30,15 @@ export default function Home() {
 
 
       {/* Discover More */}
-      <section className="py-20 container mx-auto px-4">
-        <h2 className="text-2xl font-bold mb-12">Latest Drops</h2>
+      <section className="py-12 sm:py-20 container mx-auto px-4">
+        <h2 className="text-2xl font-bold mb-8 sm:mb-12">Latest Drops</h2>
         {memes.length === 0 ? (
           <div className="text-center py-12 text-zinc-400">
             <p>No memes yet. Be the first to upload!</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
               {memes.slice(0, 8).map((meme, idx) => (
                 <MemeCard key={meme.id} index={idx} {...meme} />
               ))}
