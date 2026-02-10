@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
+import Script from "next/script";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -50,6 +51,11 @@ export default function RootLayout({
         </Providers>
         <Toaster position="top-center" richColors />
         <SpeedInsights />
+        <Script
+          src="https://js.onclckmn.com/static/onclicka.js"
+          data-admpid="424687"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
