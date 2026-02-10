@@ -31,6 +31,7 @@ export function HeroSection() {
                     <button
                         key={category}
                         onClick={() => setSelectedCategory(category)}
+                        suppressHydrationWarning
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200",
                             selectedCategory === category
