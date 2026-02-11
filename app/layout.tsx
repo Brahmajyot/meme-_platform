@@ -51,11 +51,7 @@ export default function RootLayout({
         </Providers>
         <Toaster position="top-center" richColors />
         <SpeedInsights />
-        <Script
-          src="https://js.onclckmn.com/static/onclicka.js"
-          data-admpid="424687"
-          strategy="afterInteractive"
-        />
+
       </body>
     </html>
   );
