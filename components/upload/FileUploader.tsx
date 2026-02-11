@@ -16,6 +16,9 @@ export function FileUploader() {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null);
+    const captionInputRef = useRef<HTMLInputElement>(null);
+
     const [isDragging, setIsDragging] = useState(false);
     const [preview, setPreview] = useState<{ url: string; type: "video" | "image"; name: string } | null>(null);
     const [caption, setCaption] = useState("");
@@ -57,15 +60,56 @@ export function FileUploader() {
         }
     };
 
-    const handleFile = (file: File) => {
+    const generateVideoThumbnail = (file: File): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement("video");
+            video.preload = "metadata";
+            video.onloadedmetadata = () => {
+                video.currentTime = 1; // Capture at 1s to avoid black start frames
+            };
+            video.onseeked = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error("Failed to generate thumbnail blob"));
+                        }
+                    }, "image/jpeg", 0.7);
+                } else {
+                    reject(new Error("Failed to get canvas context"));
+                }
+            };
+            video.onerror = () => {
+                reject(new Error("Failed to load video"));
+            };
+            video.src = URL.createObjectURL(file);
+        });
+    };
+
+    const handleFile = async (file: File) => {
         const url = URL.createObjectURL(file);
         if (file.type.startsWith("video/")) {
             setPreview({ url, type: "video", name: file.name });
             // Default caption to filename without extension
             setCaption(file.name.replace(/\.[^/.]+$/, ""));
+
+            try {
+                const thumbBlob = await generateVideoThumbnail(file);
+                setThumbnailBlob(thumbBlob);
+            } catch (error) {
+                console.error("Thumbnail generation failed:", error);
+            }
+
         } else if (file.type.startsWith("image/")) {
             setPreview({ url, type: "image", name: file.name });
             setCaption(file.name.replace(/\.[^/.]+$/, ""));
+            setThumbnailBlob(null); // Reset for images
         } else {
             alert("Please upload a valid image or video file.");
         }
@@ -77,6 +121,7 @@ export function FileUploader() {
         }
         setPreview(null);
         setCaption("");
+        setThumbnailBlob(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -167,40 +212,61 @@ export function FileUploader() {
         try {
             const supabase = createClient();
 
-            // 1. Get the blob from the preview URL
+            // 1. Get the blob from the preview URL (video or image)
             const response = await fetch(preview.url);
-            const blob = await response.blob();
+            const mainFileBlob = await response.blob();
 
             const fileExt = preview.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
-            // 2. Upload to Supabase Storage
+            // 2. Upload Main File (Video or Image) to Supabase Storage
             const { error: uploadError } = await supabase.storage
                 .from('meme-media')
-                .upload(filePath, blob);
+                .upload(filePath, mainFileBlob);
 
             if (uploadError) {
                 throw new Error(`Storage upload failed: ${uploadError.message}`);
             }
 
-            // 3. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
+            // 3. Get Public URL for Main File
+            const { data: { publicUrl: mainFileUrl } } = supabase.storage
                 .from('meme-media')
                 .getPublicUrl(filePath);
 
-            // 4. Insert into Supabase DB
+            let thumbnailUrl = mainFileUrl; // Default to main URL if image
+
+            // 4. If Video, Upload Thumbnail
+            if (preview.type === "video" && thumbnailBlob) {
+                const thumbName = `thumb-${fileName.replace(/\.[^/.]+$/, "")}.jpg`;
+                const { error: thumbUploadError } = await supabase.storage
+                    .from('meme-media')
+                    .upload(thumbName, thumbnailBlob);
+
+                if (thumbUploadError) {
+                    console.error("Thumbnail upload failed:", thumbUploadError);
+                    // Continue without custom thumbnail, fallback to video url or backend generated if any
+                } else {
+                    const { data: { publicUrl: thumbUrl } } = supabase.storage
+                        .from('meme-media')
+                        .getPublicUrl(thumbName);
+                    thumbnailUrl = thumbUrl;
+                }
+            }
+
+
+            // 5. Insert into Supabase DB
             const { data: insertedMeme, error: dbError } = await supabase
                 .from('memes')
                 .insert({
                     title: caption,
                     category: preview.type === "video" ? "Video" : "Image",
-                    thumbnail: publicUrl,
-                    video_url: preview.type === "video" ? publicUrl : null,
+                    thumbnail: thumbnailUrl,
+                    video_url: preview.type === "video" ? mainFileUrl : null,
                     duration: preview.type === "video" ? "0:15" : null,
                     creator_name: session?.user?.name || "Anonymous Creator",
                     creator_avatar: session?.user?.image || "https://i.pravatar.cc/150?u=anon",
-                    user_id: session?.user?.email, // Add user_id for creator identification
+                    user_id: session?.user?.email,
                     views: "0",
                     trending_score: aiAnalysis?.score || 50,
                     virality_score: aiAnalysis?.score || null,
@@ -213,7 +279,7 @@ export function FileUploader() {
                 throw new Error(`Database insert failed: ${dbError.message}`);
             }
 
-            // 5. Update Local State & Redirect
+            // 6. Update Local State & Redirect
             const newMeme = {
                 id: insertedMeme.id,
                 title: insertedMeme.title,
@@ -224,7 +290,7 @@ export function FileUploader() {
                 creator: {
                     name: insertedMeme.creator_name,
                     avatar: insertedMeme.creator_avatar,
-                    id: session?.user?.email, // Add creator ID for delete button
+                    id: session?.user?.email,
                 },
                 views: insertedMeme.views,
                 timePosted: "Just now",
@@ -298,6 +364,17 @@ export function FileUploader() {
                             <X size={20} />
                         </button>
 
+                        {/* Title Overlay for Video */}
+                        <div className="absolute top-4 left-4 z-20 max-w-[70%]">
+                            <div
+                                className="bg-black/60 text-white px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-2 cursor-pointer hover:bg-black/80 transition-all"
+                                onClick={() => captionInputRef.current?.focus()}
+                            >
+                                <p className="font-bold text-sm truncate">{caption || "Untitled Meme"}</p>
+                                <Sparkles size={12} className="text-yellow-400" />
+                            </div>
+                        </div>
+
                         {preview.type === "video" ? (
                             <video
                                 src={preview.url}
@@ -327,13 +404,16 @@ export function FileUploader() {
                                     </button>
                                 )}
                             </label>
-                            <input
-                                type="text"
-                                value={caption}
-                                onChange={(e) => setCaption(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-all"
-                                placeholder="Give your meme a catchy title..."
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    ref={captionInputRef}
+                                    type="text"
+                                    value={caption}
+                                    onChange={(e) => setCaption(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-500/50 transition-all"
+                                    placeholder="Give your meme a catchy title..."
+                                />
+                            </div>
                         </div>
 
                         {preview.type === "image" && (
